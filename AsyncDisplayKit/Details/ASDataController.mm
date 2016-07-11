@@ -20,8 +20,8 @@
 #import "ASIndexedNodeContext.h"
 #import "ASDataController+Subclasses.h"
 
-#define LOG(...) NSLog(__VA_ARGS__)
-//#define LOG(...)
+//#define LOG(...) NSLog(__VA_ARGS__)
+#define LOG(...)
 
 const static NSUInteger kASDataControllerSizingCountPerProcessor = 5;
 
@@ -777,8 +777,7 @@ NSString * const ASDataControllerRowNodeKind = @"_ASDataControllerRowNodeKind";
   [self performEditCommandWithBlock:^{
     ASDisplayNodeAssertMainThread();
     LOG(@"Edit Command - insertRows: %@", indexPaths);
-    [self waitUntilAllUpdatesAreCommitted];
-//    [_editingTransactionQueue waitUntilAllOperationsAreFinished];
+    [_editingTransactionQueue waitUntilAllOperationsAreFinished];
 
     // Sort indexPath to avoid messing up the index when inserting in several batches
     NSArray *sortedIndexPaths = [indexPaths sortedArrayUsingSelector:@selector(compare:)];
