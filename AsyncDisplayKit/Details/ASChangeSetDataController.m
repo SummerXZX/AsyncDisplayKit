@@ -27,6 +27,7 @@
   // NOTE: This assertion is failing in some apps and will be enabled soon.
 //  ASDisplayNodeAssertMainThread();
   if (_changeSetBatchUpdateCounter <= 0) {
+    _changeSetBatchUpdateCounter = 0;
     _changeSet = [[_ASHierarchyChangeSet alloc] initWithOldData:[self itemCountsFromDataSource]];
   }
   _changeSetBatchUpdateCounter++;

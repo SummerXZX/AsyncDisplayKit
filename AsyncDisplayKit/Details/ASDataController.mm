@@ -446,8 +446,9 @@ NSString * const ASDataControllerRowNodeKind = @"_ASDataControllerRowNodeKind";
     NSUInteger sectionCount = [_dataSource numberOfSectionsInDataController:self];
     NSIndexSet *sectionIndexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, sectionCount)];
     NSArray<ASIndexedNodeContext *> *contexts = [self _populateFromDataSourceWithSectionIndexSet:sectionIndexSet];
-      
+
     [self invalidateDataSourceItemCounts];
+    // Fetch the new item counts upfront.
     [self itemCountsFromDataSource];
     
     // Allow subclasses to perform setup before going into the edit transaction
@@ -777,6 +778,7 @@ NSString * const ASDataControllerRowNodeKind = @"_ASDataControllerRowNodeKind";
   [self performEditCommandWithBlock:^{
     ASDisplayNodeAssertMainThread();
     LOG(@"Edit Command - insertRows: %@", indexPaths);
+    
     [_editingTransactionQueue waitUntilAllOperationsAreFinished];
 
     // Sort indexPath to avoid messing up the index when inserting in several batches
