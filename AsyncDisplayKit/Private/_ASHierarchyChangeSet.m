@@ -351,7 +351,8 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
   }
   ASDisplayNodeAssert(NSNotFound == invalidSectionInsert, @"Attempt to insert section %ld but there are only %ld sections after the update.", (long)invalidSectionInsert, (long)newSectionCount);
   
-  [_oldItemCounts enumerateObjectsUsingBlock:^(NSNumber * _Nonnull oldItemCountObj, NSUInteger oldSection, BOOL * _Nonnull stop) {
+  NSUInteger oldSection = 0;
+  for (NSNumber *oldItemCountObj in _oldItemCounts) {
     NSUInteger oldItemCount = oldItemCountObj.unsignedIntegerValue;
     // If section was reloaded, ignore.
     if ([allReloadedSections containsIndex:oldSection]) {
@@ -374,8 +375,8 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
     // Assert that the new item count is correct.
     NSUInteger newItemCount = _newItemCounts[newSection].unsignedIntegerValue;
     ASDisplayNodeAssert(newItemCount == oldItemCount + insertedItems.count - deletedItems.count, @"Invalid number of items in section %ld. The number of items after the update (%ld) must be equal to the number of items before the update (%ld) plus or minus the number of items inserted or deleted (%ld inserted, %ld deleted).", (long)oldSection, (long)newItemCount, (long)oldItemCount, (long)insertedItems.count, (long)deletedItems.count);
-  }];
-  
+    oldSection += 1;
+  }
 }
 
 - (NSString *)description
