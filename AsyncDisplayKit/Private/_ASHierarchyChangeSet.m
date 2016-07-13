@@ -308,60 +308,90 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
   NSInteger newSectionCount = _newItemCounts.count;
   NSInteger oldSectionCount = _oldItemCounts.count;
   
+  NSInteger insertedSectionCount = _insertedSections.count;
+  NSInteger deletedSectionCount = _deletedSections.count;
   // Assert that the new section count is correct.
-  ASDisplayNodeAssert(newSectionCount == oldSectionCount + _insertedSections.count - _deletedSections.count, @"Invalid number of sections. The number of sections after the update (%ld) must be equal to the number of sections before the update (%ld) plus or minus the number of sections inserted or deleted (%ld inserted, %ld deleted)", (long)newSectionCount, (long)oldSectionCount, (long)_insertedSections.count, (long)_deletedSections.count);
+  if (newSectionCount != oldSectionCount + insertedSectionCount - deletedSectionCount) {
+    ASDisplayNodeFailAssert(@"Invalid number of sections. The number of sections after the update (%zd) must be equal to the number of sections before the update (%zd) plus or minus the number of sections inserted or deleted (%zu inserted, %zu deleted)", newSectionCount, oldSectionCount, insertedSectionCount, deletedSectionCount);
+    return;
+  }
   
   // Assert that no invalid deletes/reloads happened.
   NSInteger invalidSectionDelete = NSNotFound;
   if (oldSectionCount == 0) {
-    invalidSectionDelete = [_deletedSections firstIndex];
+    invalidSectionDelete = _deletedSections.firstIndex;
   } else {
     invalidSectionDelete = [_deletedSections indexGreaterThanIndex:oldSectionCount - 1];
   }
-  ASDisplayNodeAssert(NSNotFound == invalidSectionDelete, @"Attempt to delete section %ld but there are only %ld sections before the update.", invalidSectionDelete, oldSectionCount);
+  if (NSNotFound != invalidSectionDelete) {
+    ASDisplayNodeFailAssert(@"Attempt to delete section %zd but there are only %zd sections before the update.", invalidSectionDelete, oldSectionCount);
+    return;
+  }
   
   for (_ASHierarchyItemChange *change in _deleteItemChanges) {
     for (NSIndexPath *indexPath in change.indexPaths) {
       // Assert that item delete happened in a valid section.
-      ASDisplayNodeAssert(indexPath.section < oldSectionCount, @"Attempt to delete item %ld from section %ld, but there are only %ld sections before the update.", (long)indexPath.item, (long)indexPath.section, (long)oldSectionCount);
+      NSInteger section = indexPath.section;
+      NSInteger item = indexPath.item;
+      if (section >= oldSectionCount) {
+        ASDisplayNodeFailAssert(@"Attempt to delete item %zd from section %zd, but there are only %zd sections before the update.", item, section, oldSectionCount);
+        return;
+      }
       
       // Assert that item delete happened to a valid item.
-      NSInteger oldItemCount = _oldItemCounts[indexPath.section].integerValue;
-      ASDisplayNodeAssert(indexPath.item < oldItemCount, @"Attempt to delete item %ld from section %ld, which only contains %ld items before the update.", (long)indexPath.item, (long)indexPath.section, (long)oldItemCount);
+      NSInteger oldItemCount = _oldItemCounts[section].integerValue;
+      if (item >= oldItemCount) {
+        ASDisplayNodeFailAssert(@"Attempt to delete item %zd from section %zd, which only contains %zd items before the update.", item, section, oldItemCount);
+        return;
+      }
     }
   }
   
   for (_ASHierarchyItemChange *change in _insertItemChanges) {
     for (NSIndexPath *indexPath in change.indexPaths) {
+      NSInteger section = indexPath.section;
+      NSInteger item = indexPath.item;
       // Assert that item insert happened in a valid section.
-      ASDisplayNodeAssert(indexPath.section < newSectionCount, @"Attempt to insert item %ld into section %ld, but there are only %ld sections after the update.", (long)indexPath.item, (long)indexPath.section, (long)newSectionCount);
+      if (section >= newSectionCount) {
+        ASDisplayNodeFailAssert(@"Attempt to insert item %zd into section %zd, but there are only %zd sections after the update.", item, section, newSectionCount);
+        return;
+      }
       
       // Assert that item delete happened to a valid item.
-      NSInteger newItemCount = _newItemCounts[indexPath.section].integerValue;
-      ASDisplayNodeAssert(indexPath.item < newItemCount, @"Attempt to insert item %ld into section %ld, which only contains %ld items after the update.", (long)indexPath.item, (long)indexPath.section, (long)newItemCount);
+      NSInteger newItemCount = _newItemCounts[section].integerValue;
+      if (item >= newItemCount) {
+        ASDisplayNodeFailAssert(@"Attempt to insert item %zd into section %zd, which only contains %zd items after the update.", item, section, newItemCount);
+        return;
+      }
     }
   }
   
   // Assert that no sections were inserted out of bounds.
   NSInteger invalidSectionInsert = NSNotFound;
   if (newSectionCount == 0) {
-    invalidSectionInsert = [_insertedSections firstIndex];
+    invalidSectionInsert = _insertedSections.firstIndex;
   } else {
     invalidSectionInsert = [_insertedSections indexGreaterThanIndex:newSectionCount - 1];
   }
-  ASDisplayNodeAssert(NSNotFound == invalidSectionInsert, @"Attempt to insert section %ld but there are only %ld sections after the update.", (long)invalidSectionInsert, (long)newSectionCount);
+  if (NSNotFound != invalidSectionInsert) {
+    ASDisplayNodeFailAssert(@"Attempt to insert section %zd but there are only %zd sections after the update.", invalidSectionInsert, newSectionCount);
+    return;
+  }
   
   NSUInteger oldSection = 0;
   for (NSNumber *oldItemCountObj in _oldItemCounts) {
-    NSUInteger oldItemCount = oldItemCountObj.unsignedIntegerValue;
+    NSInteger oldItemCount = oldItemCountObj.integerValue;
     // If section was reloaded, ignore.
     if ([allReloadedSections containsIndex:oldSection]) {
-      return;
+      oldSection += 1;
+      continue;
     }
+    
     // If section was deleted, ignore.
     NSUInteger newSection = [self newSectionForOldSection:oldSection];
     if (newSection == NSNotFound) {
-      return;
+      oldSection += 1;
+      continue;
     }
     
     NSIndexSet *insertedItems = [self indexesForItemChangesOfType:_ASHierarchyChangeTypeInsert inSection:newSection];
@@ -369,12 +399,20 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
     NSIndexSet *reloadedItems = [self indexesForItemChangesOfType:_ASHierarchyChangeTypeReload inSection:oldSection];
     
     // Assert that no reloaded items were deleted.
-    NSUInteger deletedReloadedItem = [[deletedItems as_intersectionWithIndexes:reloadedItems] firstIndex];
-    ASDisplayNodeAssert(deletedReloadedItem == NSNotFound, @"Attempt to delete and reload the same item at index path %@", [NSIndexPath indexPathForItem:deletedReloadedItem inSection:oldSection]);
+    NSInteger deletedReloadedItem = [deletedItems as_intersectionWithIndexes:reloadedItems].firstIndex;
+    if (deletedReloadedItem != NSNotFound) {
+      ASDisplayNodeFailAssert(@"Attempt to delete and reload the same item at index path %@", [NSIndexPath indexPathForItem:deletedReloadedItem inSection:oldSection]);
+      return;
+    }
     
     // Assert that the new item count is correct.
-    NSUInteger newItemCount = _newItemCounts[newSection].unsignedIntegerValue;
-    ASDisplayNodeAssert(newItemCount == oldItemCount + insertedItems.count - deletedItems.count, @"Invalid number of items in section %ld. The number of items after the update (%ld) must be equal to the number of items before the update (%ld) plus or minus the number of items inserted or deleted (%ld inserted, %ld deleted).", (long)oldSection, (long)newItemCount, (long)oldItemCount, (long)insertedItems.count, (long)deletedItems.count);
+    NSInteger newItemCount = _newItemCounts[newSection].integerValue;
+    NSInteger insertedItemCount = insertedItems.count;
+    NSInteger deletedItemCount = deletedItems.count;
+    if (newItemCount != oldItemCount + insertedItemCount - deletedItemCount) {
+      ASDisplayNodeFailAssert(@"Invalid number of items in section %zd. The number of items after the update (%zd) must be equal to the number of items before the update (%zd) plus or minus the number of items inserted or deleted (%zd inserted, %zd deleted).", oldSection, newItemCount, oldItemCount, insertedItemCount, deletedItemCount);
+      return;
+    }
     oldSection += 1;
   }
 }
