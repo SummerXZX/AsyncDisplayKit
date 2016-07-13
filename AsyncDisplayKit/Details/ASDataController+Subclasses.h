@@ -9,6 +9,7 @@
 //
 
 #pragma once
+#import <vector>
 
 @class ASIndexedNodeContext;
 
@@ -46,7 +47,7 @@ typedef void (^ASDataControllerCompletionBlock)(NSArray<ASCellNode *> *nodes, NS
  *
  * This must be called on the main thread.
  */
-- (NSArray <NSNumber *> *)itemCountsFromDataSource;
+- (std::vector<NSInteger>)itemCountsFromDataSource;
 
 #pragma mark - Node sizing
 

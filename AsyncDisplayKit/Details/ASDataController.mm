@@ -31,7 +31,8 @@ NSString * const ASDataControllerRowNodeKind = @"_ASDataControllerRowNodeKind";
   NSMutableArray *_externalCompletedNodes;    // Main thread only.  External data access can immediately query this if available.
   NSMutableDictionary *_completedNodes;       // Main thread only.  External data access can immediately query this if _externalCompletedNodes is unavailable.
   NSMutableDictionary *_editingNodes;         // Modified on _editingTransactionQueue only.  Updates propagated to _completedNodes.
-  NSMutableArray<NSNumber *> *_itemCountsFromDataSource;         // Main thread only.
+  BOOL _itemCountsFromDataSourceAreValid;     // Main thread only.
+  std::vector<NSInteger> _itemCountsFromDataSource;         // Main thread only.
   
   ASMainSerialQueue *_mainSerialQueue;
   
@@ -537,20 +538,22 @@ NSString * const ASDataControllerRowNodeKind = @"_ASDataControllerRowNodeKind";
 - (void)invalidateDataSourceItemCounts
 {
   ASDisplayNodeAssertMainThread();
-  _itemCountsFromDataSource = nil;
+  _itemCountsFromDataSourceAreValid = NO;
 }
 
-- (NSArray<NSNumber *> *)itemCountsFromDataSource
+- (std::vector<NSInteger>)itemCountsFromDataSource
 {
   ASDisplayNodeAssertMainThread();
-  if (_itemCountsFromDataSource == nil) {
+  if (NO == _itemCountsFromDataSourceAreValid) {
     id<ASDataControllerSource> source = self.dataSource;
     NSInteger sectionCount = [source numberOfSectionsInDataController:self];
-    NSMutableArray<NSNumber *> *result = [NSMutableArray arrayWithCapacity:sectionCount];
+    std::vector<NSInteger> newCounts;
+    newCounts.reserve(sectionCount);
     for (NSInteger i = 0; i < sectionCount; i++) {
-      [result addObject:@([source dataController:self rowsInSection:i])];
+      newCounts.push_back([source dataController:self rowsInSection:i]);
     }
-    _itemCountsFromDataSource = result;
+    _itemCountsFromDataSource = newCounts;
+    _itemCountsFromDataSourceAreValid = YES;
   }
   return _itemCountsFromDataSource;
 }

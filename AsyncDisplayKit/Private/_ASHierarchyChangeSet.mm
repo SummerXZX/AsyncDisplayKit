@@ -72,21 +72,21 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
 @end
 
 @implementation _ASHierarchyChangeSet {
-  NSArray <NSNumber *> *_oldItemCounts;
-  NSArray <NSNumber *> *_newItemCounts;
+  std::vector<NSInteger> _oldItemCounts;
+  std::vector<NSInteger> _newItemCounts;
 }
 
 - (instancetype)init
 {
   ASDisplayNodeFailAssert(@"_ASHierarchyChangeSet: -init is not supported. Call -initWithOldData:");
-  return [self initWithOldData:@[]];
+  return [self initWithOldData:std::vector<NSInteger>()];
 }
 
-- (instancetype)initWithOldData:(NSArray<NSNumber *> *)oldItemCounts
+- (instancetype)initWithOldData:(std::vector<NSInteger>)oldItemCounts
 {
   self = [super init];
   if (self) {
-    _oldItemCounts = [oldItemCounts copy];
+    _oldItemCounts = oldItemCounts;
     
     _originalInsertItemChanges = [NSMutableArray new];
     _originalDeleteItemChanges = [NSMutableArray new];
@@ -101,7 +101,7 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
 
 #pragma mark External API
 
-- (void)markCompletedWithNewItemCounts:(NSArray<NSNumber *> *)newItemCounts
+- (void)markCompletedWithNewItemCounts:(std::vector<NSInteger>)newItemCounts
 {
   NSAssert(!_completed, @"Attempt to mark already-completed changeset as completed.");
   _completed = YES;
@@ -305,8 +305,8 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
 {
   NSIndexSet *allReloadedSections = [_ASHierarchySectionChange allIndexesInSectionChanges:_reloadSectionChanges];
   
-  NSInteger newSectionCount = _newItemCounts.count;
-  NSInteger oldSectionCount = _oldItemCounts.count;
+  NSInteger newSectionCount = _newItemCounts.size();
+  NSInteger oldSectionCount = _oldItemCounts.size();
   
   NSInteger insertedSectionCount = _insertedSections.count;
   NSInteger deletedSectionCount = _deletedSections.count;
@@ -339,7 +339,7 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
       }
       
       // Assert that item delete happened to a valid item.
-      NSInteger oldItemCount = _oldItemCounts[section].integerValue;
+      NSInteger oldItemCount = _oldItemCounts[section];
       if (item >= oldItemCount) {
         ASDisplayNodeFailAssert(@"Attempt to delete item %zd from section %zd, which only contains %zd items before the update.", item, section, oldItemCount);
         return;
@@ -358,7 +358,7 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
       }
       
       // Assert that item delete happened to a valid item.
-      NSInteger newItemCount = _newItemCounts[section].integerValue;
+      NSInteger newItemCount = _newItemCounts[section];
       if (item >= newItemCount) {
         ASDisplayNodeFailAssert(@"Attempt to insert item %zd into section %zd, which only contains %zd items after the update.", item, section, newItemCount);
         return;
@@ -378,19 +378,16 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
     return;
   }
   
-  NSUInteger oldSection = 0;
-  for (NSNumber *oldItemCountObj in _oldItemCounts) {
-    NSInteger oldItemCount = oldItemCountObj.integerValue;
+  for (NSUInteger oldSection = 0; oldSection < oldSectionCount; oldSection++) {
+    NSInteger oldItemCount = _oldItemCounts[oldSection];
     // If section was reloaded, ignore.
     if ([allReloadedSections containsIndex:oldSection]) {
-      oldSection += 1;
       continue;
     }
     
     // If section was deleted, ignore.
     NSUInteger newSection = [self newSectionForOldSection:oldSection];
     if (newSection == NSNotFound) {
-      oldSection += 1;
       continue;
     }
     
@@ -406,14 +403,13 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType)
     }
     
     // Assert that the new item count is correct.
-    NSInteger newItemCount = _newItemCounts[newSection].integerValue;
+    NSInteger newItemCount = _newItemCounts[newSection];
     NSInteger insertedItemCount = insertedItems.count;
     NSInteger deletedItemCount = deletedItems.count;
     if (newItemCount != oldItemCount + insertedItemCount - deletedItemCount) {
       ASDisplayNodeFailAssert(@"Invalid number of items in section %zd. The number of items after the update (%zd) must be equal to the number of items before the update (%zd) plus or minus the number of items inserted or deleted (%zd inserted, %zd deleted).", oldSection, newItemCount, oldItemCount, insertedItemCount, deletedItemCount);
       return;
     }
-    oldSection += 1;
   }
 }
 

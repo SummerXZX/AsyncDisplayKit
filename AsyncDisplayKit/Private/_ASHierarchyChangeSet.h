@@ -11,6 +11,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <vector>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -46,7 +47,7 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType);
 
 @interface _ASHierarchyChangeSet : NSObject
 
-- (instancetype)initWithOldData:(NSArray <NSNumber *> *)oldItemCounts NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithOldData:(std::vector<NSInteger>)oldItemCounts NS_DESIGNATED_INITIALIZER;
 
 /// @precondition The change set must be completed.
 @property (nonatomic, strong, readonly) NSIndexSet *deletedSections;
@@ -65,7 +66,7 @@ NSString *NSStringFromASHierarchyChangeType(_ASHierarchyChangeType changeType);
 
 /// Call this once the change set has been constructed to prevent future modifications to the changeset. Calling this more than once is a programmer error.
 /// NOTE: Calling this method will cause the changeset to convert all reloads into delete/insert pairs.
-- (void)markCompletedWithNewItemCounts:(NSArray <NSNumber *> *)newItemCounts;
+- (void)markCompletedWithNewItemCounts:(std::vector<NSInteger>)newItemCounts;
 
 - (nullable NSArray <_ASHierarchySectionChange *> *)sectionChangesOfType:(_ASHierarchyChangeType)changeType;
 - (nullable NSArray <_ASHierarchyItemChange *> *)itemChangesOfType:(_ASHierarchyChangeType)changeType;
